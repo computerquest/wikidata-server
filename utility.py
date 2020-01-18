@@ -1,6 +1,8 @@
 import requests
 import json
 import re
+import time
+
 url = "https://query.wikidata.org/sparql"
 headers = {
     'User-Agent': 'bot (testing this)',
@@ -25,13 +27,20 @@ def request_entity(obj_id):
 
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en" }
     }"""
-    r = requests.get(url, params={'format': 'json', 'query': query})
+    data = None
 
-    try:
-        data = r.json()
-    except:
-        print('an error occured')
-        return []
+    broken = True
+    while broken:
+        try:
+            r = requests.get(
+                url, params={'format': 'json', 'query': query}, headers=headers)
+            data = r.json()
+            broken = False
+        except:
+            print('an error occured')
+            # this sleeps for a minute to try and avoid rate call issues
+            time.sleep(60)
+            # return []
 
     # this is used to get rid irrelevant garbage values that we don't want
     data = data['results']['bindings']
