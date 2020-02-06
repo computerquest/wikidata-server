@@ -46,7 +46,8 @@ def request_entity(obj_id):
     data = data['results']['bindings']
 
     data = [x for x in data if re.search(
-        r'wikidata.*Q\d*$', x['ps_']['value']) is not None]
+        r'wikidata.*Q\d*$', x['ps_']['value']) is not None and ('pq_' not in x or re.search(
+            r'wikidata.*Q\d*$', x['pq_']['value']) is not None)]
 
     return data
 
@@ -64,6 +65,8 @@ def extract_labels(data):
 
     return ans
 
+# this is super inefficient and needs to be optimized
+
 
 def extract_objects(data):
     ans = set()
@@ -76,12 +79,63 @@ def extract_objects(data):
 
             if st is not None:
                 ans.add('wd:'+st.group())
+                x['pq_']['value'] = 'wd:'+st.group()
+
+        if 'ps_' in x:
+            st = re.search(r'Q\d*$', x['ps_']['value'])
+
+            if st is not None:
+                ans.add('wd:'+st.group())
+                x['ps_']['value'] = 'wd:'+st.group()
 
     return ans
 
 
+'''
+format:
+node: { "id": "n0", "label": "A node", }
+edge: { "id": "e2", "source": "n2",  "target": "n0", label:"" }
+
+the data must come in as only objects so no time included or other shitty data
+'''
+
+
+def create_graph(origin, data):
+    nodes = []
+    edges = []
+    for i in data:
+
+        # this is to add all of the requierd nodes ps
+        node_label = i['ps_']['value']
+        if node_label not in nodes:
+            nodes.append({'id': node_label, 'label': i["ps_Label"]['value']})
+
+        # this is adds all edges ps
+        proposed_edge = {'id': i['wdLabel']['value']+i['ps_Label']['value'],
+                         'source': origin, 'target': i['ps_']['value'], 'label': i['wdLabel']['value']}
+        if proposed_edge not in edges:
+            edges.append(proposed_edge)
+
+        if 'pq_' not in i.keys():
+            continue
+
+        # required to add all nodes pq
+        node_label = i['pq_']['value']
+        if node_label not in nodes:
+            nodes.append({'id': node_label, 'label': i['pq_Label']['value']})
+
+        # this is adds all edges ps
+        proposed_edge = {'id': i['wdpqLabel']['value']+i['pq_Label']['value'],
+                         'source': 'origin', 'target': i['pq_']['value'], 'label': i['wdpqLabel']['value']}
+        if proposed_edge not in edges:
+            edges.append(proposed_edge)
+
+    return {'nodes': nodes, 'edges': edges}
+
+
 if __name__ == '__main__':
     data = request_entity('wd:Q76')
-    extract_labels(data)
-    extract_objects(data)
+    a = extract_labels(data)
+    b = extract_objects(data)
+    c = create_graph('wd:Q76', data)
     print('done')
