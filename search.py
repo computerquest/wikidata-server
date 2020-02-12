@@ -1,9 +1,12 @@
 from utility import request_entity, extract_objects
 import copy
+import threading
+
+threads = {}
 
 
 def expand(node, path, frontier, history, opposing_history, used):
-    if not node in used:
+    if node in used:
         return False
     if node in opposing_history:
         return True
@@ -26,10 +29,7 @@ def dfs(root_id, path, frontier, history, opposing_history, used):
     return [False]
 
 
-def dfs_start(root_id, target_id):
-    paths = []
-    historyA = {}
-    historyB = {}
+def dfs_start(root_id, target_id, historyA={}, historyB={}, paths=[]):
     frontierA = [[root_id, []]]
     frontierB = [[target_id, []]]
     comp = []
@@ -56,5 +56,41 @@ def dfs_start(root_id, target_id):
     return paths
 
 
+def launch_search(first, second):
+    if (first+second) not in threads and (second+first) not in threads:
+        historyA = {}
+        historyB = {}
+        paths = []  # , historyA, historyB, paths
+        threads[first+second] = {'thread': threading.Thread(
+            target=dfs_start, args=(first, second, historyA, historyB, paths), name=first+second, daemon=True), 'historyA': historyA, 'historyB': historyB, 'paths': paths}
+        threads[first+second]['thread'].start()
+
+        # threads[first+second]['thread'].join()
+
+
+def get_search_progress(first, second):
+    key = ''
+    if (first+second) in threads:
+        key = (first+second)
+    elif (second+first) in threads:
+        key = second+first
+    else:
+        raise 'Search not found'
+
+    return list(threads[key]['historyA'].keys())+list(threads[key]['historyB'].keys()), threads[key]['paths']
+
+
+def kill_search(first, second):
+    key = ''
+    if (first+second) in threads:
+        key = (first+second)
+    elif (second+first) in threads:
+        key = second+first
+    else:
+        raise 'Search not found'
+
+    threads[key]['thread'].kill()
+
+
 if __name__ == '__main__':
-    print(dfs_start('wd:Q76', 'wd:Q2722764'))
+    print(launch_search('wd:Q76', 'wd:Q13133'))
