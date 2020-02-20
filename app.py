@@ -37,13 +37,7 @@ def poll():
 
     results = get_search_progress(first, second)[0]
 
-    graph = {'nodes': [], 'edges': []}
-    for i in results:
-        temp = create_graph(i, request_entity(i))
-        graph['nodes'].extend(temp['nodes'])
-        graph['edges'].extend(temp['edges'])
-
-    return jsonify(graph)
+    return jsonify(create_graph(results))
 
 
 if __name__ == '__main__':

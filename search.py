@@ -1,4 +1,4 @@
-from utility import request_entity, extract_objects
+from utility import get_children
 import copy
 import threading
 
@@ -18,7 +18,7 @@ def expand(node, path, frontier, history, opposing_history, used):
     z = copy.deepcopy(path)
     z.append(node)
     frontier.extend([[x, z]
-                     for x in extract_objects(request_entity(node))])
+                     for x in get_children(node)])
     return False
 
 
