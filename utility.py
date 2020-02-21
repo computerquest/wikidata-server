@@ -168,15 +168,15 @@ def create_graph_segment(origin, data):
 
         # this is adds all edges ps
         proposed_edge = {'id': i['wdpqLabel']['value']+i['pq_Label']['value'],
-                         'source': 'origin', 'target': i['pq_']['value'], 'label': i['wdpqLabel']['value']}
+                         'source': origin, 'target': i['pq_']['value'], 'label': i['wdpqLabel']['value']}
         edges.append(proposed_edge)
 
-    node_connection[origin] = {'nodes': list(nodes), 'edges': edges}
+    node_connection[origin] = {'nodes': list(nodes), 'links': edges}
     # return {'nodes': nodes, 'edges': edges}
 
 
 def create_graph(request_nodes):
-    ans = {'nodes': [], 'edges': []}
+    ans = {'nodes': [], 'links': []}
 
     for x in request_nodes:
         if x not in threads.keys():
@@ -186,7 +186,7 @@ def create_graph(request_nodes):
             threads[x].join()
 
         ans['nodes'].extend(node_connection[x]['nodes'])
-        ans['edges'].extend(node_connection[x]['edges'])
+        ans['links'].extend(node_connection[x]['links'])
 
     return ans
 
