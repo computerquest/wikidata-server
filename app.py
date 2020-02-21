@@ -3,9 +3,12 @@ import re
 from search import launch_search, get_search_progress
 from utility import create_graph, request_entity
 import flask
+from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
+cors = CORS(app)
 app.config["DEBUG"] = True
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 
 @app.route('/')
@@ -14,6 +17,7 @@ def hello():
 
 
 @app.route('/start', methods=['GET'])
+@cross_origin()
 def start():
     try:
         first = request.args.get('obj1')
@@ -31,11 +35,15 @@ def start():
 
 
 @app.route('/poll', methods=['GET'])
+@cross_origin()
 def poll():
     first = 'wd:'+request.args.get('obj1')
     second = 'wd:'+request.args.get('obj2')
 
-    results = get_search_progress(first, second)[0]
+    try:
+        results = get_search_progress(first, second)[0]
+    except:
+        return 201
 
     return jsonify(create_graph(results))
 
