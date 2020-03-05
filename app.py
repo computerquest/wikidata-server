@@ -41,7 +41,7 @@ def poll():
     second = 'wd:'+request.args.get('obj2')
 
     try:
-        results = get_search_progress(first, second)[0]
+        results = get_search_progress(first, second)
     except:
         return 201
 

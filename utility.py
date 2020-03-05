@@ -3,6 +3,7 @@ import json
 import re
 import time
 from threading import Lock, Thread
+import random
 
 lock = Lock()
 
@@ -11,8 +12,10 @@ headers = {
     'User-Agent': 'bot (testing this)',
 }
 
-node_connection = {}
 threads = {}
+nodes = {}
+edges = {}
+explored = {}
 
 
 def request_entity(obj_id):
@@ -114,11 +117,11 @@ def extract_objects_raw(data):
 
 
 def extract_objects_proccessed(id):
-    return [x['id'] for x in node_connection[id]['nodes']]
+    return explored[id]['children']
 
 
 def get_children(id):
-    if id not in node_connection:
+    if id not in explored.keys():
         return extract_objects_raw(request_entity(id))
     else:
         return extract_objects_proccessed(id)
@@ -137,26 +140,27 @@ def create_graph_segment(origin, data):
     # this is to check and make sure that we aren't making multiple requests
     lock.acquire()
 
-    if origin in node_connection:
+    if origin in explored.keys():
         lock.release()
         return
 
     lock.release()
 
-    # there might be duplicate nodes but there won't be duplicate edges
-    nodes = []
-    edges = []
+    children = []
 
     for i in data:
 
         # this is to add all of the requierd nodes ps
         node_label = i['ps_']['value']
-        nodes.append({'id': node_label, 'label': i["ps_Label"]['value']})
+        if node_label not in nodes:
+            nodes[node_label] = {'id': node_label,
+                                 'label': i["ps_Label"]['value'], 'x': random.randrange(0, 100), 'y': random.randrange(-500, 500)}
+        children.append(node_label)
 
         # this is adds all edges ps
-        proposed_edge = {'id': i['wdLabel']['value']+i['ps_Label']['value'],
+        proposed_edge = {'id': origin+i['ps_']['value'],
                          'source': origin, 'target': i['ps_']['value'], 'label': i['wdLabel']['value']}
-        edges.append(proposed_edge)
+        edges[proposed_edge['id']] = proposed_edge
 
         if 'pq_' not in i.keys():
             continue
@@ -164,29 +168,52 @@ def create_graph_segment(origin, data):
         # required to add all nodes pq
         node_label = i['pq_']['value']
         if node_label not in nodes:
-            nodes.append({'id': node_label, 'label': i['pq_Label']['value']})
+            nodes[node_label] = {'id': node_label,
+                                 'label': i['pq_Label']['value'], 'x': random.randrange(0, 100), 'y': random.randrange(0, 100)}
+        children.append(node_label)
 
         # this is adds all edges ps
-        proposed_edge = {'id': i['wdpqLabel']['value']+i['pq_Label']['value'],
+        proposed_edge = {'id': origin+i['pq_']['value'],
                          'source': origin, 'target': i['pq_']['value'], 'label': i['wdpqLabel']['value']}
-        edges.append(proposed_edge)
+        edges[proposed_edge['id']] = proposed_edge
 
-    node_connection[origin] = {'nodes': list(nodes), 'links': edges}
+    if origin not in nodes.keys():
+        nodes[origin] = {'id': origin, 'label': 'origin', 'x': random.randrange(
+            0, 100), 'y': random.randrange(-500, 500)}
+
+    explored[origin] = children
+
     # return {'nodes': nodes, 'edges': edges}
 
 
-def create_graph(request_nodes):
+def create_graph(request_paths):
     ans = {'nodes': [], 'links': []}
 
-    for x in request_nodes:
-        if x not in threads.keys():
-            continue
+    for request_nodes in request_paths:
 
-        if threads[x].isAlive():
-            threads[x].join()
+        for index in range(0, len(request_nodes)):
+            x = request_nodes[index]
 
-        ans['nodes'].extend(node_connection[x]['nodes'])
-        ans['links'].extend(node_connection[x]['links'])
+            if x not in threads.keys():
+                continue
+
+            if threads[x].isAlive():
+                threads[x].join()
+
+            if x not in [x['id'] for x in ans['nodes']]:
+                nodes[x]['distance'] = index
+                ans['nodes'].append(nodes[x])
+
+            if index+1 > len(request_nodes)-1:
+                continue
+
+            next = request_nodes[index+1]
+
+            if next+x in edges.keys() and next+x not in [x['id'] for x in ans['links']]:
+                ans['links'].append(edges[next+x])
+
+            if x+next in edges.keys() and x+next not in [x['id'] for x in ans['links']]:
+                ans['links'].append(edges[x+next])
 
     return ans
 
