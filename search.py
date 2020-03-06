@@ -1,8 +1,10 @@
 from utility import get_children
 import copy
-import threading
+from threading import Lock, Thread
 
 threads = {}
+
+attach_detach = Lock()
 
 
 def expand(node, path, frontier, history, opposing_history, used):
@@ -54,15 +56,19 @@ def groom_frontier(used, frontier):
         del frontier[x]
 
 
-def dfs_start(root_id, target_id, historyA={}, historyB={}, paths=[]):
-    frontierA = [[root_id, []]]
-    frontierB = [[target_id, []]]
+def dfs_start(root_id, target_id, frontierA=[], frontierB=[], historyA={}, historyB={}, paths=[], active=[True], already_used=[], used_count={}):
+    if frontierA == []:
+        frontierA = [[root_id, []]]
+
+    if frontierB == []:
+        frontierB = [[target_id, []]]
+
     comp = []
 
-    already_used = []  # this is to get rid of using the same nodes repeatedly
-    used_count = {}
+    # already_used = []  # this is to get rid of using the same nodes repeatedly
+    #used_count = {}
 
-    for i in range(0, 10000000000):
+    while active[0]:
         current = frontierA.pop(0)
         comp = dfs(current[0], current[1], frontierA,
                    historyA, historyB, already_used)
@@ -107,15 +113,34 @@ def dfs_start(root_id, target_id, historyA={}, historyB={}, paths=[]):
 
 
 def launch_search(first, second):
-    if (first+second) not in threads and (second+first) not in threads:
+    attach_detach.acquire()
+
+    key = get_search_key(first, second)
+    if key == '':
+        key = first+second
         historyA = {}
         historyB = {}
-        paths = []  # , historyA, historyB, paths
-        threads[first+second] = {'thread': threading.Thread(
-            target=dfs_start, args=(first, second, historyA, historyB, paths), name=first+second, daemon=True), 'historyA': historyA, 'historyB': historyB, 'paths': paths}
-        threads[first+second]['thread'].start()
+        frontierA = [[first, []]]
+        frontierB = [[second, []]]
+        paths = []
+        active = [True]
+        already_used = []
+        used_count = {}
+        threads[key] = {'thread': Thread(
+            target=dfs_start, args=(first, second, frontierA, frontierB, historyA, historyB, paths, active, already_used, used_count), name=first+second, daemon=True), 'used_count': used_count, 'already_used': already_used, 'frontierA': frontierA, 'frontierB': frontierB, 'historyA': historyA, 'historyB': historyB, 'paths': paths, 'count': 1, 'active': active}
+        threads[key]['thread'].start()
 
         # threads[first+second]['thread'].join()
+    else:
+        threads[key]['count'] = threads[key]['count']+1
+
+        if not threads[key]['active'][0]:
+            threads[key]['active'][0] = True
+            threads[key]['thread'] = Thread(
+                target=dfs_start, args=(first, second, threads[key]['frontierA'], threads[key]['frontierB'], threads[key]['historyA'], threads[key]['historyB'], threads[key]['paths'], threads[key]['active'], threads[key]['already_used'], threads[key]['used_count']), name=first+second, daemon=True)
+            threads[key]['thread'].start()
+
+    attach_detach.release()
 
 
 def get_search_progress(first, second):
@@ -131,6 +156,24 @@ def get_search_progress(first, second):
     # return [x for x_sublist in threads[key]['paths'] for x in x_sublist]
 
 
+def detach_search(first, second):
+    attach_detach.acquire()
+    key = get_search_key(first, second)
+
+    if key is '':
+        return
+
+    new_val = threads[key]['count'] - 1
+    threads[key]['count'] = new_val
+
+    if new_val <= 0:
+        threads[key]['active'][0] = False
+
+    print('count for ', key, 'at',
+          threads[key]['count'], threads[key]['active'][0])
+    attach_detach.release()
+
+
 def kill_search(first, second):
     key = ''
     if (first+second) in threads:
@@ -141,6 +184,16 @@ def kill_search(first, second):
         raise 'Search not found'
 
     threads[key]['thread'].kill()
+
+
+def get_search_key(first, second):
+    key = first+second
+    if key not in threads:
+        key = second+first
+        if key not in threads:
+            key = ''
+
+    return key
 
 
 if __name__ == '__main__':

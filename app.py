@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify
 import re
-from search import launch_search, get_search_progress
+from search import launch_search, get_search_progress, detach_search
 from utility import create_graph, request_entity
 import flask
 from flask_cors import CORS, cross_origin
+import json
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -24,14 +25,23 @@ def start():
         second = request.args.get('obj2')
     except:
         print('error in start')
-        return 400
+        return json.dumps({'success': False}), 400, {'ContentType': 'application/json'}
 
     if re.search(r'Q\d*$', first) is not None and re.search(r'Q\d*$', second) is not None:
         print('starting the search')
         launch_search('wd:'+first, 'wd:'+second)
-        return 200
+        return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
     else:
-        return 400
+        return json.dumps({'success': False}), 400, {'ContentType': 'application/json'}
+
+
+@app.route('/detach', methods=['GET'])
+@cross_origin()
+def detach():
+    first = 'wd:'+request.args.get('obj1')
+    second = 'wd:'+request.args.get('obj2')
+    detach_search(first, second)
+    return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
 
 
 @app.route('/poll', methods=['GET'])
@@ -43,7 +53,7 @@ def poll():
     try:
         results = get_search_progress(first, second)
     except:
-        return 201
+        return json.dumps({'success': False}), 201, {'ContentType': 'application/json'}
 
     return jsonify(create_graph(results))
 
