@@ -68,46 +68,48 @@ def dfs_start(root_id, target_id, frontierA=[], frontierB=[], historyA={}, histo
     # already_used = []  # this is to get rid of using the same nodes repeatedly
     #used_count = {}
 
-    while active[0]:
-        current = frontierA.pop(0)
-        comp = dfs(current[0], current[1], frontierA,
-                   historyA, historyB, already_used)
-        if comp[0] == True:
-            new_path = comp[1]+historyB[current[0]][::-1]
-            # already_used.extend(new_path[1:-1])
+    while active[0] and (len(frontierB) != 0 or len(frontierA) != 0):
+        if len(frontierA) != 0:
+            current = frontierA.pop(0)
+            comp = dfs(current[0], current[1], frontierA,
+                       historyA, historyB, already_used)
+            if comp[0] == True:
+                new_path = comp[1]+historyB[current[0]][::-1]
+                # already_used.extend(new_path[1:-1])
 
-            for x in new_path[1:-1]:
-                if x not in used_count.keys():
-                    used_count[x] = 1
-                else:
-                    used_count[x] = used_count[x]+1
+                for x in new_path[1:-1]:
+                    if x not in used_count.keys():
+                        used_count[x] = 1
+                    else:
+                        used_count[x] = used_count[x]+1
 
-                if used_count[x] >= 5:
-                    already_used.append(x)
+                    if used_count[x] >= 5:
+                        already_used.append(x)
 
-            paths.append(comp[1]+historyB[current[0]][::-1])
-            groom_frontier(already_used, frontierA)
-            groom_frontier(already_used, frontierB)
+                paths.append(comp[1]+historyB[current[0]][::-1])
+                groom_frontier(already_used, frontierA)
+                groom_frontier(already_used, frontierB)
 
-        current = frontierB.pop(0)
-        comp = dfs(current[0], current[1], frontierB,
-                   historyB, historyA, already_used)
-        if comp[0] == True:
-            new_path = historyA[comp[2]]+comp[1][::-1]
-            # already_used.extend(new_path[1:-1])
+        if len(frontierB) != 0:
+            current = frontierB.pop(0)
+            comp = dfs(current[0], current[1], frontierB,
+                       historyB, historyA, already_used)
+            if comp[0] == True:
+                new_path = historyA[comp[2]]+comp[1][::-1]
+                # already_used.extend(new_path[1:-1])
 
-            for x in new_path[1:-1]:
-                if x not in used_count.keys():
-                    used_count[x] = 1
-                else:
-                    used_count[x] = used_count[x]+1
+                for x in new_path[1:-1]:
+                    if x not in used_count.keys():
+                        used_count[x] = 1
+                    else:
+                        used_count[x] = used_count[x]+1
 
-                if used_count[x] >= 5:
-                    already_used.append(x)
+                    if used_count[x] >= 5:
+                        already_used.append(x)
 
-            paths.append(historyA[comp[2]]+comp[1][::-1])
-            groom_frontier(already_used, frontierA)
-            groom_frontier(already_used, frontierB)
+                paths.append(historyA[comp[2]]+comp[1][::-1])
+                groom_frontier(already_used, frontierA)
+                groom_frontier(already_used, frontierB)
 
     return paths
 
@@ -115,9 +117,13 @@ def dfs_start(root_id, target_id, frontierA=[], frontierB=[], historyA={}, histo
 def launch_search(first, second):
     attach_detach.acquire()
 
-    key = get_search_key(first, second)
+    key = first+second if first > second else second+first
+    if key not in threads:
+        key = ''
+
     if key == '':
-        key = first+second
+        print('starting thread for', first, second)
+        key = first+second if first > second else second+first
         historyA = {}
         historyB = {}
         frontierA = [[first, []]]
@@ -132,9 +138,11 @@ def launch_search(first, second):
 
         # threads[first+second]['thread'].join()
     else:
+        print('search already done', first, second)
         threads[key]['count'] = threads[key]['count']+1
 
         if not threads[key]['active'][0]:
+            print('restarting', first, second)
             threads[key]['active'][0] = True
             threads[key]['thread'] = Thread(
                 target=dfs_start, args=(first, second, threads[key]['frontierA'], threads[key]['frontierB'], threads[key]['historyA'], threads[key]['historyB'], threads[key]['paths'], threads[key]['active'], threads[key]['already_used'], threads[key]['used_count']), name=first+second, daemon=True)
@@ -144,23 +152,24 @@ def launch_search(first, second):
 
 
 def get_search_progress(first, second):
-    key = ''
-    if (first+second) in threads:
-        key = (first+second)
-    elif (second+first) in threads:
-        key = second+first
-    else:
+    key = first+second if first > second else second+first
+    if key not in threads:
         raise 'Search not found'
 
-    return threads[key]['paths']
+    return [threads[key]['paths'], len(threads[key]['historyA'])+len(threads[key]['historyB']), len(threads[key]['frontierA'])+len(threads[key]['frontierB'])]
     # return [x for x_sublist in threads[key]['paths'] for x in x_sublist]
 
 
 def detach_search(first, second):
+    print('detach wating for ', first, second)
     attach_detach.acquire()
-    key = get_search_key(first, second)
+
+    key = first+second if first > second else second+first
+    if key not in threads:
+        key = ''
 
     if key is '':
+        attach_detach.release()
         return
 
     new_val = threads[key]['count'] - 1
@@ -171,29 +180,17 @@ def detach_search(first, second):
 
     print('count for ', key, 'at',
           threads[key]['count'], threads[key]['active'][0])
+
     attach_detach.release()
+    print('detach release', first, second)
 
 
 def kill_search(first, second):
-    key = ''
-    if (first+second) in threads:
-        key = (first+second)
-    elif (second+first) in threads:
-        key = second+first
-    else:
+    key = first+second if first > second else second+first
+    if key not in threads:
         raise 'Search not found'
 
     threads[key]['thread'].kill()
-
-
-def get_search_key(first, second):
-    key = first+second
-    if key not in threads:
-        key = second+first
-        if key not in threads:
-            key = ''
-
-    return key
 
 
 if __name__ == '__main__':

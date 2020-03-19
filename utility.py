@@ -19,7 +19,7 @@ explored = {}
 
 
 def request_entity(obj_id):
-    print('requesting', obj_id)
+    #print('requesting', obj_id)
     query = """SELECT ?wdLabel ?ps_ ?ps_Label ?wdpqLabel ?pq_ ?pq_Label {
       VALUES (?company) {("""+obj_id+""")}
 
@@ -117,7 +117,7 @@ def extract_objects_raw(data):
 
 
 def extract_objects_proccessed(id):
-    return explored[id]['children']
+    return explored[id]
 
 
 def get_children(id):
@@ -154,11 +154,11 @@ def create_graph_segment(origin, data):
         node_label = i['ps_']['value']
         if node_label not in nodes:
             nodes[node_label] = {'id': node_label,
-                                 'label': i["ps_Label"]['value'], 'x': random.randrange(0, 100), 'y': random.randrange(-500, 500)}
+                                 'label': i["ps_Label"]['value']}
         children.append(node_label)
 
         # this is adds all edges ps
-        proposed_edge = {'id': origin+i['ps_']['value'],
+        proposed_edge = {'id':   origin+i['ps_']['value'] if origin > i['ps_']['value'] else i['ps_']['value']+origin,
                          'source': origin, 'target': i['ps_']['value'], 'label': i['wdLabel']['value']}
         edges[proposed_edge['id']] = proposed_edge
 
@@ -169,17 +169,16 @@ def create_graph_segment(origin, data):
         node_label = i['pq_']['value']
         if node_label not in nodes:
             nodes[node_label] = {'id': node_label,
-                                 'label': i['pq_Label']['value'], 'x': random.randrange(0, 100), 'y': random.randrange(0, 100)}
+                                 'label': i['pq_Label']['value']}
         children.append(node_label)
 
         # this is adds all edges ps
-        proposed_edge = {'id': origin+i['pq_']['value'],
+        proposed_edge = {'id': origin+i['pq_']['value'] if origin > i['pq_']['value'] else i['pq_']['value']+origin,
                          'source': origin, 'target': i['pq_']['value'], 'label': i['wdpqLabel']['value']}
         edges[proposed_edge['id']] = proposed_edge
 
     if origin not in nodes.keys():
-        nodes[origin] = {'id': origin, 'label': 'origin', 'x': random.randrange(
-            0, 100), 'y': random.randrange(-500, 500)}
+        nodes[origin] = {'id': origin, 'label': 'origin'}
 
     explored[origin] = children
 
@@ -208,14 +207,39 @@ def create_graph(request_paths):
                 continue
 
             next = request_nodes[index+1]
-
-            if next+x in edges.keys() and next+x not in [x['id'] for x in ans['links']]:
-                ans['links'].append(edges[next+x])
-
-            if x+next in edges.keys() and x+next not in [x['id'] for x in ans['links']]:
-                ans['links'].append(edges[x+next])
+            key = next+x if next > x else x+next
+            if key in edges.keys() and key not in [x['id'] for x in ans['links']]:
+                ans['links'].append(edges[key])
 
     return ans
+
+
+def create_graph_data(request_paths):
+    ans_nodes = {}
+    ans_links = {}
+
+    for request_nodes in request_paths:
+
+        for index in range(0, len(request_nodes)):
+            x = request_nodes[index]
+
+            if x not in threads.keys():
+                continue
+
+            if threads[x].isAlive():
+                threads[x].join()
+
+            nodes[x]['distance'] = index
+            ans_nodes[x] = nodes[x]
+
+            if index+1 > len(request_nodes)-1:
+                continue
+
+            next = request_nodes[index+1]
+            key = next+x if next > x else x+next
+            ans_links[key] = edges[key]
+
+    return {'nodes': ans_nodes, 'links': ans_links}
 
 
 if __name__ == '__main__':
