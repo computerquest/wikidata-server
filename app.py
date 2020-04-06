@@ -53,7 +53,7 @@ def poll():
     try:
         results, checked, frontier = get_search_progress(first, second)
     except:
-        return json.dumps({'success': False}), 201, {'ContentType': 'application/json'}
+        return json.dumps({'success': False}), 400, {'ContentType': 'application/json'}
 
     return jsonify({**create_graph(results), 'paths': results, 'checked': checked, 'frontier': frontier})
 
@@ -67,7 +67,7 @@ def poll_raw():
     try:
         results, checked, frontier = get_search_progress(first, second)
     except:
-        return json.dumps({'success': False}), 201, {'ContentType': 'application/json'}
+        return json.dumps({'success': False}), 400, {'ContentType': 'application/json'}
 
     return jsonify({**create_graph_data(results), 'paths': results, 'checked': checked, 'frontier': frontier})
 

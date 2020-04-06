@@ -45,10 +45,10 @@ def request_entity(obj_id):
                 url, params={'format': 'json', 'query': query}, headers=headers)
             data = r.json()
             broken = False
-        except:
-            print('an error occured')
+        except Exception as e:
+            print('an error occured', e)
             # this sleeps for a minute to try and avoid rate call issues
-            time.sleep(60)
+            time.sleep(1)
             # return []
 
     # this is used to get rid irrelevant garbage values that we don't want
@@ -178,7 +178,22 @@ def create_graph_segment(origin, data):
         edges[proposed_edge['id']] = proposed_edge
 
     if origin not in nodes.keys():
-        nodes[origin] = {'id': origin, 'label': 'origin'}
+        query = """SELECT DISTINCT * WHERE { 
+        """+origin+""" rdfs:label ?label . 
+        FILTER (langMatches( lang(?label), "ES" ) )  
+        }"""
+        data = 'origin'
+
+        try:
+            print('making the request', query)
+            r = requests.get(
+                url, params={'format': 'json', 'query': query}, headers=headers)
+            data = r.json()
+            data = data['results']['bindings'][0]['label']['value']
+        except:
+            print('error fetching name')
+
+        nodes[origin] = {'id': origin, 'label': data}
 
     explored[origin] = children
 
