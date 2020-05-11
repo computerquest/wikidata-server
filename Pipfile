@@ -12,6 +12,10 @@ flask = "*"
 sparqlwrapper = "*"
 requests = "*"
 flask-cors = "*"
+twisted = "*"
+flask-pymongo = "*"
+flask-mongoengine = "*"
+gunicorn = "*"
 
 [requires]
 python_version = "3.7"
