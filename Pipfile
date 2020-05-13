@@ -16,6 +16,8 @@ twisted = "*"
 flask-pymongo = "*"
 flask-mongoengine = "*"
 gunicorn = "*"
+dnspython = "*"
+aiohttp = "*"
 
 [requires]
 python_version = "3.7"

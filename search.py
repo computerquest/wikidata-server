@@ -1,6 +1,7 @@
 from utility import get_children
 import copy
 from threading import Lock, Thread
+import time
 
 threads = {}
 
@@ -133,7 +134,7 @@ def launch_search(first, second):
         already_used = []
         used_count = {}
         threads[key] = {'thread': Thread(
-            target=dfs_start, args=(first, second, frontierA, frontierB, historyA, historyB, paths, active, already_used, used_count), name=first+second, daemon=True), 'used_count': used_count, 'already_used': already_used, 'frontierA': frontierA, 'frontierB': frontierB, 'historyA': historyA, 'historyB': historyB, 'paths': paths, 'count': 1, 'active': active}
+            target=dfs_start, args=(first, second, frontierA, frontierB, historyA, historyB, paths, active, already_used, used_count), name=first+second, daemon=True), 'used_count': used_count, 'already_used': already_used, 'frontierA': frontierA, 'frontierB': frontierB, 'historyA': historyA, 'historyB': historyB, 'paths': paths, 'count': 1, 'active': active, 'start': time.time()}
         threads[key]['thread'].start()
 
         # threads[first+second]['thread'].join()
@@ -160,11 +161,14 @@ def get_search_progress(first, second):
     # return [x for x_sublist in threads[key]['paths'] for x in x_sublist]
 
 
-def detach_search(first, second):
+def detach_search(first='', second='', together='', kill=False):
     print('detach wating for ', first, second)
     attach_detach.acquire()
 
     key = first+second if first > second else second+first
+    if together != '':
+        key = together
+
     if key not in threads:
         key = ''
 
@@ -172,11 +176,14 @@ def detach_search(first, second):
         attach_detach.release()
         return
 
-    new_val = threads[key]['count'] - 1
-    threads[key]['count'] = new_val
+    thread = threads[key]
+    new_val = thread['count'] - 1
 
-    if new_val <= 0:
-        threads[key]['active'][0] = False
+    if new_val <= 0 or kill:
+        thread['active'][0] = False
+        new_val = 0
+
+    thread['count'] = new_val
 
     print('count for ', key, 'at',
           threads[key]['count'], threads[key]['active'][0])
