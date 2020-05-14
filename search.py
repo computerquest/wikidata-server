@@ -17,11 +17,18 @@ def expand(node, path, frontier, history, opposing_history, used):
     if node in history:
         return False
 
+    try:
+        children = get_children(node)
+    except:
+        print('Non viable node caught')
+        return False
+
     history[node] = copy.deepcopy(path)
     z = copy.deepcopy(path)
     z.append(node)
     frontier.extend([[x, z]
-                     for x in get_children(node)])
+                     for x in children])
+
     return False
 
 
@@ -157,7 +164,7 @@ def get_search_progress(first, second):
     if key not in threads:
         raise 'Search not found'
 
-    return [threads[key]['paths'], len(threads[key]['historyA'])+len(threads[key]['historyB']), len(threads[key]['frontierA'])+len(threads[key]['frontierB'])]
+    return [copy.deepcopy(threads[key]['paths']), len(threads[key]['historyA'])+len(threads[key]['historyB']), len(threads[key]['frontierA'])+len(threads[key]['frontierB'])]
     # return [x for x_sublist in threads[key]['paths'] for x in x_sublist]
 
 

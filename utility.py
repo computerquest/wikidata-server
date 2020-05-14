@@ -98,8 +98,9 @@ def request_entity(obj_id):
     # makes sure everything went well
     for x in results:
         if not x:
-            print('there was an error parsing node', obj_id)
-            return {}
+            raise "Node doesn't effectively exist"
+            # print('there was an error parsing node', obj_id)
+            # return {}
 
     # saves the node to the database
     n = Node(wid=obj_id, label=node_name[0], children=children)
@@ -135,14 +136,12 @@ def get_graph_data(request_paths):
     ans_links = {}
 
     # this is for the polling
-    print('db start', time.time())
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     client = motor.motor_asyncio.AsyncIOMotorClient(
         'mongodb+srv://stuff:jStigter1@cluster0-mgq8y.mongodb.net/data?retryWrites=true&w=majority', io_loop=loop)
     db = client.data
     collection = db['node']
-    print('db start', time.time())
 
     required = set()
     for a in request_paths:
@@ -153,7 +152,8 @@ def get_graph_data(request_paths):
     routines = [get_doc(x, documents, collection) for x in required]
     start = time.time()
     loop.run_until_complete(asyncio.gather(*routines))
-    print('request end', (time.time()-start)/len(required))
+    print('request end', (time.time()-start)*1000,
+          (time.time()-start)/len(required)*1000)
 
     for request_nodes in request_paths:
         last_node = None

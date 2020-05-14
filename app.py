@@ -88,7 +88,7 @@ def poll_raw():
     try:
         results, checked, frontier = get_search_progress(first, second)
     except:
-        return json.dumps({'success': False}), 400, {'ContentType': 'application/json'}
+        return json.dumps({'success': False, 'Message': 'Error getting search progress'}), 400, {'ContentType': 'application/json'}
 
     request_history.add((first+second if first > second else second+first))
 
