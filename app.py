@@ -15,8 +15,8 @@ cors = CORS(app)
 app.config["DEBUG"] = True
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['MONGODB_SETTINGS'] = {
-    'db': 'nodes',
-    'host': 'mongodb+srv://stuff:jStigter1@cluster0-mgq8y.mongodb.net/nodes?retryWrites=true&w=majority'
+    'db': 'data',
+    'host': 'mongodb+srv://stuff:jStigter1@cluster0-mgq8y.mongodb.net/data?retryWrites=true&w=majority'
 }
 
 

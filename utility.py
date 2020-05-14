@@ -1,3 +1,4 @@
+import motor.motor_asyncio
 import requests
 import json
 import re
@@ -9,6 +10,7 @@ from models import Node
 import aiohttp
 import asyncio
 from datetime import datetime
+import motor.motor_asyncio
 
 lock = Lock()
 
@@ -29,15 +31,17 @@ async def get(query, children, label_field=False):
             try:
                 data = await response.json(content_type=None)
                 data = data['results']['bindings']
-
-                if not label_field:
-                    for x in data:
-                        wid = re.search(r'Q\d*$', x['entity_']['value'])
-                        children['wd:'+wid.group()] = x['propertyLabel']['value']
-                else:
-                    children.append(data[0]['label']['value'])
             except Exception as e:
                 print('there was an exception requesting', e)
+                return False
+
+            if not label_field:
+                for x in data:
+                    wid = re.search(r'Q\d*$', x['entity_']['value'])
+                    children['wd:'+wid.group()] = x['propertyLabel']['value']
+            elif len(data) > 0:
+                children.append(data[0]['label']['value'])
+            else:
                 return False
 
             return True
@@ -121,20 +125,47 @@ the data must come in as only objects so no time included or other shitty data
 '''
 
 
+async def get_doc(id, parent, collection):
+    document = await collection.find_one({'wid': id})
+    parent[id] = document
+
+
 def get_graph_data(request_paths):
     ans_nodes = {}
     ans_links = {}
+
+    # this is for the polling
+    print('db start', time.time())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = motor.motor_asyncio.AsyncIOMotorClient(
+        'mongodb+srv://stuff:jStigter1@cluster0-mgq8y.mongodb.net/data?retryWrites=true&w=majority', io_loop=loop)
+    db = client.data
+    collection = db['node']
+    print('db start', time.time())
+
+    required = set()
+    for a in request_paths:
+        for x in a:
+            required.add(x)
+
+    documents = {}
+    routines = [get_doc(x, documents, collection) for x in required]
+    start = time.time()
+    loop.run_until_complete(asyncio.gather(*routines))
+    print('request end', (time.time()-start)/len(required))
 
     for request_nodes in request_paths:
         last_node = None
         for index in range(0, len(request_nodes)):
             x = request_nodes[index]
 
-            node = Node.objects.get(wid=x)
+            #node = Node.objects.get(wid=x)
+            node = documents[x]
 
             n = {}
-            n['label'] = node.label
-            n['id'] = node.wid
+            n['label'] = node['label']
+            n['id'] = node['wid']
             n['distance'] = index
 
             ans_nodes[x] = n
@@ -145,16 +176,16 @@ def get_graph_data(request_paths):
                 continue
 
             e = {}
-            next = last_node.wid
+            next = last_node['wid']
             key = next+x if next > x else x+next
 
             # if not in this node then must be in the next node
-            if next in node.children.keys():
-                e['label'] = node.children[next]
+            if next in node['children'].keys():
+                e['label'] = node['children'][next]
                 e['source'] = x
                 e['target'] = next
             else:
-                e['label'] = last_node.children[x]
+                e['label'] = last_node['children'][x]
                 e['source'] = next
                 e['target'] = x
 
@@ -163,6 +194,8 @@ def get_graph_data(request_paths):
             ans_links[key] = e
 
             last_node = node
+
+    client.close()
 
     return {'nodes': ans_nodes, 'links': ans_links}
 

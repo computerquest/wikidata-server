@@ -18,6 +18,7 @@ flask-mongoengine = "*"
 gunicorn = "*"
 dnspython = "*"
 aiohttp = "*"
+motor = "*"
 
 [requires]
 python_version = "3.7"
