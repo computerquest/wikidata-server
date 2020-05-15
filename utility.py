@@ -131,9 +131,14 @@ async def get_doc(id, parent, collection):
     parent[id] = document
 
 
-def get_graph_data(request_paths):
+def get_graph_data(all_paths, progress=0):
     ans_nodes = {}
     ans_links = {}
+
+    # this gets the paths that haven't been recieved
+    request_paths = []
+    for i in range(progress, len(all_paths)):
+        request_paths.append(all_paths[i])
 
     # this is for the polling
     loop = asyncio.new_event_loop()
@@ -150,10 +155,7 @@ def get_graph_data(request_paths):
 
     documents = {}
     routines = [get_doc(x, documents, collection) for x in required]
-    start = time.time()
     loop.run_until_complete(asyncio.gather(*routines))
-    print('request end', (time.time()-start)*1000,
-          (time.time()-start)/len(required)*1000)
 
     for request_nodes in request_paths:
         last_node = None
@@ -197,7 +199,7 @@ def get_graph_data(request_paths):
 
     client.close()
 
-    return {'nodes': ans_nodes, 'links': ans_links}
+    return {'nodes': ans_nodes, 'links': ans_links, 'paths': request_paths}
 
 
 if __name__ == '__main__':

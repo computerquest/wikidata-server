@@ -82,8 +82,17 @@ def detach():
 @app.route('/poll', methods=['GET'])
 @cross_origin()
 def poll_raw():
-    first = 'wd:'+request.args.get('obj1')
-    second = 'wd:'+request.args.get('obj2')
+    try:
+        first = 'wd:'+request.args.get('obj1')
+        second = 'wd:'+request.args.get('obj2')
+        progress = request.args.get('received')
+        if progress is not None:
+            progress = int(progress)
+    except:
+        return json.dumps({'success': False, 'Message': 'Missing obj1 or obj2 parameters'}), 400, {'ContentType': 'application/json'}
+
+    if progress is None:
+        progress = 0
 
     try:
         results, checked, frontier = get_search_progress(first, second)
@@ -92,7 +101,7 @@ def poll_raw():
 
     request_history.add((first+second if first > second else second+first))
 
-    return jsonify({**get_graph_data(results), 'paths': results, 'checked': checked, 'frontier': frontier})
+    return jsonify({**get_graph_data(results, progress), 'checked': checked, 'frontier': frontier})
 
 
 if __name__ == '__main__':
