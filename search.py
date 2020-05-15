@@ -161,7 +161,9 @@ def launch_search(first, second):
 
 def get_search_progress(first, second):
     key = first+second if first > second else second+first
+    print('searching', key, threads.keys())
     if key not in threads:
+        print('searching2', key, threads.keys())
         raise ValueError('Search not found')
 
     return [copy.deepcopy(threads[key]['paths']), len(threads[key]['historyA'])+len(threads[key]['historyB']), len(threads[key]['frontierA'])+len(threads[key]['frontierB'])]
