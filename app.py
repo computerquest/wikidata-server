@@ -9,7 +9,7 @@ from threading import Lock, Thread
 import time
 from db import initialize_db
 from mongoengine import connect
-
+from flask import Response
 app = Flask(__name__)
 cors = CORS(app)
 app.config["DEBUG"] = True
@@ -89,6 +89,7 @@ def poll_raw():
         if progress is not None:
             progress = int(progress)
     except:
+        print('ERROR WITH PARAMETERS')
         return json.dumps({'success': False, 'Message': 'Missing obj1 or obj2 parameters'}), 400, {'ContentType': 'application/json'}
 
     if progress is None:
@@ -96,7 +97,8 @@ def poll_raw():
 
     try:
         results, checked, frontier = get_search_progress(first, second)
-    except:
+    except Exception as e:
+        print('ERROR GETTING PROGRESS', e)
         return json.dumps({'success': False, 'Message': 'Error getting search progress'}), 400, {'ContentType': 'application/json'}
 
     request_history.add((first+second if first > second else second+first))
