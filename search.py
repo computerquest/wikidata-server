@@ -79,7 +79,7 @@ def dfs_start(root_id, target_id, frontierA=[], frontierB=[], historyA={}, histo
     while active[0] and (len(frontierB) != 0 or len(frontierA) != 0):
         if len(frontierA) != 0:
             current = frontierA.pop(0)
-            if len(current[1]) > 10:
+            if len(current[1]) > 9:
                 break
             comp = dfs(current[0], current[1], frontierA,
                        historyA, historyB, already_used)
@@ -102,7 +102,7 @@ def dfs_start(root_id, target_id, frontierA=[], frontierB=[], historyA={}, histo
 
         if len(frontierB) != 0:
             current = frontierB.pop(0)
-            if len(current[1]) > 10:
+            if len(current[1]) > 9:
                 break
             comp = dfs(current[0], current[1], frontierB,
                        historyB, historyA, already_used)
