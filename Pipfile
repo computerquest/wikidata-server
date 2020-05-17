@@ -20,6 +20,7 @@ dnspython = "*"
 aiohttp = "*"
 motor = "*"
 gevent = "*"
+greenlet = "*"
 
 [requires]
 python_version = "3.7"
