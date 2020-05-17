@@ -19,6 +19,7 @@ gunicorn = "*"
 dnspython = "*"
 aiohttp = "*"
 motor = "*"
+gevent = "*"
 
 [requires]
 python_version = "3.7"
